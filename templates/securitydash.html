@@ -37,25 +37,27 @@
       </div>
     </nav>
   </div>
+  <div class="username">
+    Approved leave days taken this month: {{ leave_days }}
+  </div>
   <div>
     <table class="table table-hover table-bordered table-dark">
-      <caption>Duty Table</caption>
+      <caption>Upcoming 7 Days</caption>
       <thead>
         <tr>
-
           <th class="table-title" scope="col">Duty Date</th>
-          <th class="table-title" scope="col">Start time</th>
-          <th class="table-title" scope="col">End time</th>
+          <th class="table-title" scope="col">Shift</th>
           <th class="table-title" scope="col">Place</th>
+          <th class="table-title" scope="col">Overtime</th>
         </tr>
       </thead>
       <tbody>
         {% for dty in duty %}
         <tr>
           <td>{{ dty.ddate }}</td>
-          <td>{{ dty.stime }}</td>
-          <td>{{ dty.etime }}</td>
+          <td>{{ dty.shift }} ({{ SHIFT_TIMES[dty.shift][0] }}-{{ SHIFT_TIMES[dty.shift][1] }})</td>
           <td>{{ dty.place.name }}</td>
+          <td>{{ 'Yes' if dty.is_overtime else 'No' }}</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -103,6 +105,103 @@
       </div>
     </div>
   </section>
+
+  <section class="form my-4 mx-5">
+    <div class="container">
+      <div class="row no-gutters">
+        <div class="col-lg-12 ">
+          <form action="/overtime-request" method="post">
+            <div class="form-row">
+              <div class="col-lg-4 col-4">
+                <label style="font-size:larger; text-align: center; padding-top: 10px;">Request Overtime</label>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="col-lg-4 col-4">
+                <label>Enter Date</label>
+                <input type="date" placeholder="Date" name="ddate" value="" class="form-control" my-3 p-3
+                  required />
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="col-lg-4 col-4">
+                <label>Select Shift</label>
+                <select name="shift" class="form-control" required>
+                  {% for shift in SHIFTS %}
+                  <option value="{{ shift }}">{{ shift }} ({{ SHIFT_TIMES[shift][0] }}-{{ SHIFT_TIMES[shift][1] }})</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="col-lg-4 col-4">
+                <label>Select Place</label>
+                <select name="placeid" class="form-control" required>
+                  {% for place in places %}
+                  <option value="{{ place.id }}">{{ place.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="col-lg-4 col-4">
+                <button type="submit" class="btn btn-primary" name="button">Submit</button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="card">
+    <table class="table table-hover table-bordered table-dark">
+      <caption>My Leave Requests</caption>
+      <thead>
+        <tr>
+          <th class="table-title" scope="col">Start Date</th>
+          <th class="table-title" scope="col">End Date</th>
+          <th class="table-title" scope="col">Reason</th>
+          <th class="table-title" scope="col">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for lv in my_leaves %}
+        <tr>
+          <td>{{ lv.sdate }}</td>
+          <td>{{ lv.edate }}</td>
+          <td>{{ lv.reason }}</td>
+          <td>{{ lv.status }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <table class="table table-hover table-bordered table-dark">
+      <caption>My Overtime Requests</caption>
+      <thead>
+        <tr>
+          <th class="table-title" scope="col">Date</th>
+          <th class="table-title" scope="col">Shift</th>
+          <th class="table-title" scope="col">Place</th>
+          <th class="table-title" scope="col">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for req in my_overtime %}
+        <tr>
+          <td>{{ req.ddate }}</td>
+          <td>{{ req.shift }}</td>
+          <td>{{ req.place.name }}</td>
+          <td>{{ req.status }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 
   <script>
     function msg() {

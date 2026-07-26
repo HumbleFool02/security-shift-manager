@@ -72,16 +72,12 @@
                         </div>
                         <div class="form-row">
                             <div class="col-lg-4 col-4">
-                                <label>Enter Start Time of duty</label>
-                                <input type="time" placeholder="End Date" name="stime" value="" class="form-control"
-                                    my-3 p-3 required />
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="col-lg-4 col-4">
-                                <label>Enter End Time of duty</label>
-                                <input type="time" placeholder="End Date" name="etime" value="" class="form-control"
-                                    my-3 p-3 required />
+                                <label>Select Shift</label>
+                                <select name="shift" class="form-control" required>
+                                    {% for shift in SHIFTS %}
+                                    <option value="{{ shift }}">{{ shift }} ({{ SHIFT_TIMES[shift][0] }}-{{ SHIFT_TIMES[shift][1] }})</option>
+                                    {% endfor %}
+                                </select>
                             </div>
                         </div>
                         <div class="form-row">
