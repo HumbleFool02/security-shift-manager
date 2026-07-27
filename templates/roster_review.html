@@ -15,6 +15,15 @@
 </head>
 
 <body>
+  {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+  <div class="container mt-3">
+    {% for category, message in messages %}
+    <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }}">{{ message }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% endwith %}
   <div class="header" id="topheader">
     <nav class="navbar navbar-expand-lg navbar-light bg-light fixed-top">
       <div class="container text-uppercase p-2">

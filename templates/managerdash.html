@@ -15,6 +15,15 @@
 </head>
 
 <body>
+  {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+  <div class="container mt-3">
+    {% for category, message in messages %}
+    <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }}">{{ message }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% endwith %}
   <div class="header" id="topheader">
     <nav class="navbar navbar-expand-lg navbar-light bg-light fixed-top">
       <div class="container text-uppercase p-2">
@@ -116,6 +125,30 @@
               <button type="submit" class="btn btn-sm btn-danger">Decline</button>
             </form>
           </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <table class="table table-hover table-bordered table-dark">
+      <caption>Approved Leave</caption>
+      <thead>
+        <tr>
+          <th class="table-title" scope="col">Identity Number</th>
+          <th class="table-title" scope="col">Start Date</th>
+          <th class="table-title" scope="col">End Date</th>
+          <th class="table-title" scope="col">Reason</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for abs in approved_leaves %}
+        <tr>
+          <td>{{ abs.idno }}</td>
+          <td>{{ abs.sdate }}</td>
+          <td>{{ abs.edate }}</td>
+          <td>{{ abs.reason }}</td>
         </tr>
         {% endfor %}
       </tbody>

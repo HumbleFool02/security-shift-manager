@@ -5,7 +5,7 @@ from functools import wraps
 import jwt
 from dotenv import load_dotenv
 from flask_bcrypt import Bcrypt
-from flask import Flask, render_template, redirect, url_for, request, g, abort, make_response
+from flask import Flask, render_template, redirect, url_for, request, g, abort, make_response, flash
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.exc import IntegrityError
 
@@ -227,6 +227,7 @@ def render_manager_dashboard():
     manager = Manager.query.filter_by(idno=g.user['idno']).first()
     security = Security.query.filter_by(domain='Security').order_by(Security.name).all()
     pending_leaves = Absence.query.filter_by(status='Pending').order_by(Absence.timestamp).all()
+    approved_leaves = Absence.query.filter_by(status='Approved').order_by(Absence.sdate).all()
     pending_overtime = OvertimeRequest.query.filter_by(status='Pending').order_by(OvertimeRequest.timestamp).all()
     duty = Duty.query.order_by(Duty.ddate).all()
     batches = RosterBatch.query.order_by(RosterBatch.start_date.desc()).all()
@@ -236,6 +237,7 @@ def render_manager_dashboard():
 
     return render_template(
         'managerdash.html', security=security, abes=pending_leaves,
+        approved_leaves=approved_leaves,
         overtime_requests=pending_overtime, duty=duty, batches=batches,
         leave_counts=leave_counts, username=manager.username if manager else g.user['idno'],
     )
@@ -265,7 +267,8 @@ def managerLogin():
         resp.set_cookie('token', token, httponly=True)
         return resp
 
-    return 'Dont Login'
+    flash('Invalid username or password.', 'error')
+    return redirect(url_for('managerLogin'))
 
 
 @app.route("/managerdash")
@@ -289,7 +292,8 @@ def securityLogin():
         resp.set_cookie('token', token, httponly=True)
         return resp
 
-    return 'Dont Login'
+    flash('Invalid username or password.', 'error')
+    return redirect(url_for('securityLogin'))
 
 
 @app.route("/logout")
@@ -318,7 +322,11 @@ def createduty():
             db.session.commit()
         except IntegrityError:
             db.session.rollback()
-            return "That person already has a duty for that date and shift"
+            flash('That person already has a duty for that date and shift.', 'error')
+            return redirect(url_for('createduty'))
+
+        flash('Duty created.', 'success')
+        return redirect(url_for('createduty'))
 
     return render_template("createduty.html")
 
@@ -330,12 +338,25 @@ def securitydashboard():
         sdate = parse_date(request.form.get('sdate'))
         edate = parse_date(request.form.get('edate'))
         reason = request.form.get('reason')
+
+        overlap = Absence.query.filter(
+            Absence.idno == g.user['idno'],
+            Absence.status.in_(['Pending', 'Approved']),
+            Absence.sdate <= edate,
+            Absence.edate >= sdate,
+        ).first()
+        if overlap is not None:
+            flash('This request overlaps one of your existing pending or approved leave requests.', 'error')
+            return redirect(url_for('securitydashboard'))
+
         absence = Absence(
             idno=g.user['idno'], sdate=sdate, edate=edate, reason=reason,
             status='Pending', timestamp=datetime.utcnow(),
         )
         db.session.add(absence)
         db.session.commit()
+        flash('Leave request submitted.', 'success')
+        return redirect(url_for('securitydashboard'))
 
     today = date.today()
     week_end = today + timedelta(days=6)
@@ -400,7 +421,8 @@ def approve_overtime(req_id):
     if conflict is not None:
         req.status = 'Declined'
         db.session.commit()
-        return "Cannot approve: that person already has a duty for that date and shift"
+        flash('Could not approve: that person already has a duty for that date and shift. Request declined.', 'error')
+        return redirect(url_for('managerdash_view'))
 
     db.session.add(Duty(
         didno=req.idno, placeid=req.placeid, ddate=req.ddate, shift=req.shift,
@@ -408,6 +430,7 @@ def approve_overtime(req_id):
     ))
     req.status = 'Approved'
     db.session.commit()
+    flash('Overtime request approved.', 'success')
     return redirect(url_for('managerdash_view'))
 
 
@@ -456,7 +479,8 @@ def reassign_duty(batch_id, duty_id):
     if duty.batch_id != batch.id:
         abort(404)
     if batch.status != 'draft':
-        return "Cannot reassign a published roster"
+        flash('Cannot reassign a published roster.', 'error')
+        return redirect(url_for('roster_review', batch_id=batch.id))
 
     new_idno = request.form.get('didno')
 
@@ -465,17 +489,20 @@ def reassign_duty(batch_id, duty_id):
         Absence.sdate <= duty.ddate, Absence.edate >= duty.ddate,
     ).first()
     if on_leave is not None:
-        return "That person is on approved leave for this date"
+        flash('That person is on approved leave for this date.', 'error')
+        return redirect(url_for('roster_review', batch_id=batch.id))
 
     conflict = Duty.query.filter(
         Duty.didno == new_idno, Duty.ddate == duty.ddate,
         Duty.shift == duty.shift, Duty.id != duty.id,
     ).first()
     if conflict is not None:
-        return "That person is already assigned elsewhere for this date and shift"
+        flash('That person is already assigned elsewhere for this date and shift.', 'error')
+        return redirect(url_for('roster_review', batch_id=batch.id))
 
     duty.didno = new_idno
     db.session.commit()
+    flash('Duty reassigned.', 'success')
     return redirect(url_for('roster_review', batch_id=batch.id))
 
 
@@ -499,7 +526,8 @@ def registration():
         cpword = request.form.get('cpword')
 
         if password != cpword:
-            return "Password does not match"
+            flash('Password does not match.', 'error')
+            return redirect(url_for('registration'))
 
         pword = bcrypt.generate_password_hash(password).decode('utf-8')
         if domain == "Manager":
@@ -508,6 +536,9 @@ def registration():
             entry = Security(name=name, username=username, domain=domain, idno=idno, pword=pword)
         db.session.add(entry)
         db.session.commit()
+
+        flash('Registration successful. Please log in.', 'success')
+        return redirect(url_for('managerLogin' if domain == 'Manager' else 'securityLogin'))
 
     return render_template('registration.html')
 
