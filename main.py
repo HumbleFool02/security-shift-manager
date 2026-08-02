@@ -310,7 +310,12 @@ def createduty():
         didno = request.form.get('didno')
         ddate = parse_date(request.form.get('ddate'))
         shift = request.form.get('shift')
-        placeid = int(request.form.get('placeid'))
+
+        try:
+            placeid = int(request.form.get('placeid'))
+        except (TypeError, ValueError):
+            flash('Please provide a valid place number.', 'error')
+            return redirect(url_for('createduty'))
 
         place = Place.query.get(placeid)
         if place is None:
@@ -384,7 +389,12 @@ def securitydashboard():
 def overtime_request():
     ddate = parse_date(request.form.get('ddate'))
     shift = request.form.get('shift')
-    placeid = int(request.form.get('placeid'))
+
+    try:
+        placeid = int(request.form.get('placeid'))
+    except (TypeError, ValueError):
+        flash('Please provide a valid place number.', 'error')
+        return redirect(url_for('securitydashboard'))
 
     db.session.add(OvertimeRequest(
         idno=g.user['idno'], ddate=ddate, shift=shift, placeid=placeid,
@@ -398,8 +408,12 @@ def overtime_request():
 @token_required(role='Manager')
 def approve_leave(absence_id):
     absence = Absence.query.get_or_404(absence_id)
+    if absence.status != 'Pending':
+        flash(f'This request has already been {absence.status.lower()}.', 'error')
+        return redirect(url_for('managerdash_view'))
     absence.status = 'Approved'
     db.session.commit()
+    flash('Leave request approved.', 'success')
     return redirect(url_for('managerdash_view'))
 
 
@@ -407,8 +421,12 @@ def approve_leave(absence_id):
 @token_required(role='Manager')
 def decline_leave(absence_id):
     absence = Absence.query.get_or_404(absence_id)
+    if absence.status != 'Pending':
+        flash(f'This request has already been {absence.status.lower()}.', 'error')
+        return redirect(url_for('managerdash_view'))
     absence.status = 'Declined'
     db.session.commit()
+    flash('Leave request declined.', 'success')
     return redirect(url_for('managerdash_view'))
 
 
@@ -416,6 +434,9 @@ def decline_leave(absence_id):
 @token_required(role='Manager')
 def approve_overtime(req_id):
     req = OvertimeRequest.query.get_or_404(req_id)
+    if req.status != 'Pending':
+        flash(f'This request has already been {req.status.lower()}.', 'error')
+        return redirect(url_for('managerdash_view'))
 
     conflict = Duty.query.filter_by(didno=req.idno, ddate=req.ddate, shift=req.shift).first()
     if conflict is not None:
@@ -438,15 +459,24 @@ def approve_overtime(req_id):
 @token_required(role='Manager')
 def decline_overtime(req_id):
     req = OvertimeRequest.query.get_or_404(req_id)
+    if req.status != 'Pending':
+        flash(f'This request has already been {req.status.lower()}.', 'error')
+        return redirect(url_for('managerdash_view'))
     req.status = 'Declined'
     db.session.commit()
+    flash('Overtime request declined.', 'success')
     return redirect(url_for('managerdash_view'))
 
 
 @app.route("/manager/roster/generate", methods=['POST'])
 @token_required(role='Manager')
 def generate_roster_route():
-    start = parse_date(request.form.get('start_date'))
+    try:
+        start = parse_date(request.form.get('start_date'))
+    except (TypeError, ValueError):
+        flash('Please provide a valid window start date.', 'error')
+        return redirect(url_for('managerdash_view'))
+
     end = start + timedelta(days=6)
     batch = generate_roster(start, end)
     return redirect(url_for('roster_review', batch_id=batch.id))
@@ -483,6 +513,11 @@ def reassign_duty(batch_id, duty_id):
         return redirect(url_for('roster_review', batch_id=batch.id))
 
     new_idno = request.form.get('didno')
+
+    person = Security.query.filter_by(idno=new_idno).first()
+    if person is None:
+        flash('That is not a valid security person ID.', 'error')
+        return redirect(url_for('roster_review', batch_id=batch.id))
 
     on_leave = Absence.query.filter(
         Absence.idno == new_idno, Absence.status == 'Approved',
@@ -535,7 +570,12 @@ def registration():
         else:
             entry = Security(name=name, username=username, domain=domain, idno=idno, pword=pword)
         db.session.add(entry)
-        db.session.commit()
+        try:
+            db.session.commit()
+        except IntegrityError:
+            db.session.rollback()
+            flash('That username or ID number is already taken.', 'error')
+            return redirect(url_for('registration'))
 
         flash('Registration successful. Please log in.', 'success')
         return redirect(url_for('managerLogin' if domain == 'Manager' else 'securityLogin'))
