@@ -188,18 +188,17 @@ def generate_roster(start_date, end_date):
         if duty.batch_id is None or (duty.batch and duty.batch.status == 'published'):
             counts[duty.didno] = counts.get(duty.didno, 0) + 1
 
-    assigned_in_batch = {}
+    assigned_by_date = {}
     existing_in_window = Duty.query.filter(Duty.ddate >= start_date, Duty.ddate <= end_date).all()
     for duty in existing_in_window:
         if duty.batch_id is None or (duty.batch and duty.batch.status == 'published'):
-            assigned_in_batch.setdefault((duty.ddate, duty.shift), set()).add(duty.didno)
+            assigned_by_date.setdefault(duty.ddate, set()).add(duty.didno)
 
     d = start_date
     while d <= end_date:
         for shift in SHIFTS:
-            key = (d, shift)
             for place in places:
-                busy = assigned_in_batch.get(key, set())
+                busy = assigned_by_date.get(d, set())
                 candidates = [
                     p for p in persons
                     if p.idno not in busy and d not in leave_dates.get(p.idno, set())
@@ -216,7 +215,7 @@ def generate_roster(start_date, end_date):
                     is_overtime=False, batch_id=batch.id,
                 ))
                 counts[chosen.idno] = counts.get(chosen.idno, 0) + 1
-                assigned_in_batch.setdefault(key, set()).add(chosen.idno)
+                assigned_by_date.setdefault(d, set()).add(chosen.idno)
         d += timedelta(days=1)
 
     db.session.commit()
@@ -308,8 +307,13 @@ def logout():
 def createduty():
     if request.method == 'POST':
         didno = request.form.get('didno')
-        ddate = parse_date(request.form.get('ddate'))
         shift = request.form.get('shift')
+
+        try:
+            ddate = parse_date(request.form.get('ddate'))
+        except (TypeError, ValueError):
+            flash('Please provide a valid duty date.', 'error')
+            return redirect(url_for('createduty'))
 
         try:
             placeid = int(request.form.get('placeid'))
@@ -340,8 +344,12 @@ def createduty():
 @token_required(role='Security')
 def securitydashboard():
     if request.method == 'POST':
-        sdate = parse_date(request.form.get('sdate'))
-        edate = parse_date(request.form.get('edate'))
+        try:
+            sdate = parse_date(request.form.get('sdate'))
+            edate = parse_date(request.form.get('edate'))
+        except (TypeError, ValueError):
+            flash('Please provide valid start and end dates.', 'error')
+            return redirect(url_for('securitydashboard'))
         reason = request.form.get('reason')
 
         overlap = Absence.query.filter(
@@ -387,8 +395,13 @@ def securitydashboard():
 @app.route("/overtime-request", methods=['POST'])
 @token_required(role='Security')
 def overtime_request():
-    ddate = parse_date(request.form.get('ddate'))
     shift = request.form.get('shift')
+
+    try:
+        ddate = parse_date(request.form.get('ddate'))
+    except (TypeError, ValueError):
+        flash('Please provide a valid date.', 'error')
+        return redirect(url_for('securitydashboard'))
 
     try:
         placeid = int(request.form.get('placeid'))
@@ -438,11 +451,11 @@ def approve_overtime(req_id):
         flash(f'This request has already been {req.status.lower()}.', 'error')
         return redirect(url_for('managerdash_view'))
 
-    conflict = Duty.query.filter_by(didno=req.idno, ddate=req.ddate, shift=req.shift).first()
+    conflict = Duty.query.filter_by(didno=req.idno, ddate=req.ddate).first()
     if conflict is not None:
         req.status = 'Declined'
         db.session.commit()
-        flash('Could not approve: that person already has a duty for that date and shift. Request declined.', 'error')
+        flash('Could not approve: that person already has a duty that day. Request declined.', 'error')
         return redirect(url_for('managerdash_view'))
 
     db.session.add(Duty(
