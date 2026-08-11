@@ -37,6 +37,11 @@ SHIFT_TIMES = {
 app.jinja_env.globals['SHIFTS'] = SHIFTS
 app.jinja_env.globals['SHIFT_TIMES'] = SHIFT_TIMES
 
+# Payslips for a given month can only be generated once this day of the
+# FOLLOWING month has been reached (e.g. July's payroll unlocks Aug 1).
+# Plain Python constant, not admin-editable, not stored in the DB.
+PAYSLIP_RELEASE_DAY = 1
+
 
 class Manager(db.Model):
     id = db.Column(db.Integer, unique=True)
@@ -111,6 +116,47 @@ class OvertimeRequest(db.Model):
 
     place = db.relationship('Place', backref='overtime_requests')
 
+class Admin(db.Model):
+    id = db.Column(db.Integer, unique=True)
+    name = db.Column(db.String(120), unique=False, nullable=False)
+    username = db.Column(db.String(120), unique=True, nullable=False)
+    domain = db.Column(db.String(120), unique=False, nullable=False)
+    idno = db.Column(db.String(120), primary_key=True, nullable=False)
+    pword = db.Column(db.String(500), unique=False, nullable=False)
+
+class PayrollConfig(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    base_pay = db.Column(db.Float, nullable=False)
+    night_pay = db.Column(db.Float, nullable=False)
+    allowed_leaves = db.Column(db.Integer, nullable=False)
+    fine_per_excess_leave = db.Column(db.Float, nullable=False)
+
+class Bonus(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    idno = db.Column(db.String(120), db.ForeignKey('security.idno'), nullable=False)
+    amount = db.Column(db.Float, nullable=False)
+    month = db.Column(db.Integer, nullable=False)
+    year = db.Column(db.Integer, nullable=False)
+    added_by = db.Column(db.String(120), db.ForeignKey('manager.idno'), nullable=False)
+    timestamp = db.Column(db.DateTime, nullable=False)
+
+class Payslip(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    idno = db.Column(db.String(120), db.ForeignKey('security.idno'), nullable=False)
+    month = db.Column(db.Integer, nullable=False)
+    year = db.Column(db.Integer, nullable=False)
+    regular_pay = db.Column(db.Float, nullable=False)
+    night_pay = db.Column(db.Float, nullable=False)
+    overtime_pay = db.Column(db.Float, nullable=False)
+    bonus = db.Column(db.Float, nullable=False)
+    leave_fine = db.Column(db.Float, nullable=False)
+    total = db.Column(db.Float, nullable=False)
+    generated_at = db.Column(db.DateTime, nullable=False)
+
+    __table_args__ = (
+        db.UniqueConstraint('idno', 'month', 'year', name='uq_payslip_person_month_year'),
+    )
+
 
 def parse_date(value):
     return datetime.strptime(value, '%Y-%m-%d').date()
@@ -129,6 +175,12 @@ def approved_leave_days_in_month(idno, year, month):
         if start <= end:
             total_days += (end - start).days + 1
     return total_days
+
+
+def payslip_release_date(month, year):
+    next_month = month % 12 + 1
+    next_year = year + (1 if month == 12 else 0)
+    return date(next_year, next_month, PAYSLIP_RELEASE_DAY)
 
 
 def generate_token(idno, role):
@@ -230,6 +282,9 @@ def render_manager_dashboard():
     pending_overtime = OvertimeRequest.query.filter_by(status='Pending').order_by(OvertimeRequest.timestamp).all()
     duty = Duty.query.order_by(Duty.ddate).all()
     batches = RosterBatch.query.order_by(RosterBatch.start_date.desc()).all()
+    generated_months = db.session.query(Payslip.year, Payslip.month).distinct().order_by(
+        Payslip.year.desc(), Payslip.month.desc()
+    ).all()
 
     today = date.today()
     leave_counts = {p.idno: approved_leave_days_in_month(p.idno, today.year, today.month) for p in security}
@@ -239,6 +294,7 @@ def render_manager_dashboard():
         approved_leaves=approved_leaves,
         overtime_requests=pending_overtime, duty=duty, batches=batches,
         leave_counts=leave_counts, username=manager.username if manager else g.user['idno'],
+        generated_months=generated_months,
     )
 
 
@@ -293,6 +349,54 @@ def securityLogin():
 
     flash('Invalid username or password.', 'error')
     return redirect(url_for('securityLogin'))
+
+
+@app.route("/AdminLogin", methods=['GET', 'POST'])
+def adminLogin():
+    if request.method == 'GET':
+        return render_template('AdminLogin.html')
+
+    username = request.form.get('username')
+    pword = request.form.get('pword')
+    data = Admin.query.filter_by(username=username).first()
+
+    if data is not None and bcrypt.check_password_hash(data.pword, pword):
+        token = generate_token(data.idno, 'Admin')
+        resp = make_response(redirect(url_for('admin_dashboard')))
+        resp.set_cookie('token', token, httponly=True)
+        return resp
+
+    flash('Invalid username or password.', 'error')
+    return redirect(url_for('adminLogin'))
+
+
+@app.route("/admin", methods=['GET', 'POST'])
+@token_required(role='Admin')
+def admin_dashboard():
+    config = PayrollConfig.query.first()
+
+    if request.method == 'POST':
+        try:
+            base_pay = float(request.form.get('base_pay'))
+            night_pay = float(request.form.get('night_pay'))
+            allowed_leaves = int(request.form.get('allowed_leaves'))
+            fine_per_excess_leave = float(request.form.get('fine_per_excess_leave'))
+        except (TypeError, ValueError):
+            flash('Please provide valid numeric values for all fields.', 'error')
+            return redirect(url_for('admin_dashboard'))
+
+        if config is None:
+            config = PayrollConfig()
+            db.session.add(config)
+        config.base_pay = base_pay
+        config.night_pay = night_pay
+        config.allowed_leaves = allowed_leaves
+        config.fine_per_excess_leave = fine_per_excess_leave
+        db.session.commit()
+        flash('Payroll settings updated.', 'success')
+        return redirect(url_for('admin_dashboard'))
+
+    return render_template('admindash.html', config=config)
 
 
 @app.route("/logout")
@@ -385,10 +489,14 @@ def securitydashboard():
     my_leaves = Absence.query.filter_by(idno=g.user['idno']).order_by(Absence.timestamp.desc()).all()
     my_overtime = OvertimeRequest.query.filter_by(idno=g.user['idno']).order_by(OvertimeRequest.timestamp.desc()).all()
     leave_days = approved_leave_days_in_month(g.user['idno'], today.year, today.month)
+    my_payslips = Payslip.query.filter_by(idno=g.user['idno']).order_by(
+        Payslip.year.desc(), Payslip.month.desc()
+    ).all()
 
     return render_template(
         'securitydash.html', duty=duty, places=places,
         my_leaves=my_leaves, my_overtime=my_overtime, leave_days=leave_days,
+        my_payslips=my_payslips,
     )
 
 
@@ -479,6 +587,116 @@ def decline_overtime(req_id):
     db.session.commit()
     flash('Overtime request declined.', 'success')
     return redirect(url_for('managerdash_view'))
+
+
+@app.route("/manager/bonus", methods=['POST'])
+@token_required(role='Manager')
+def add_bonus():
+    idno = request.form.get('idno')
+
+    try:
+        amount = float(request.form.get('amount'))
+    except (TypeError, ValueError):
+        flash('Please provide a valid bonus amount.', 'error')
+        return redirect(url_for('managerdash_view'))
+
+    try:
+        target = datetime.strptime(request.form.get('target_month'), '%Y-%m')
+    except (TypeError, ValueError):
+        flash('Please provide a valid target month.', 'error')
+        return redirect(url_for('managerdash_view'))
+
+    person = Security.query.filter_by(idno=idno).first()
+    if person is None:
+        flash('That is not a valid security person ID.', 'error')
+        return redirect(url_for('managerdash_view'))
+
+    db.session.add(Bonus(
+        idno=idno, amount=amount, month=target.month, year=target.year,
+        added_by=g.user['idno'], timestamp=datetime.utcnow(),
+    ))
+    db.session.commit()
+    flash(f'Bonus of {amount} added for {person.name} for {target.month:02d}/{target.year}.', 'success')
+    return redirect(url_for('managerdash_view'))
+
+
+@app.route("/manager/payroll/generate", methods=['POST'])
+@token_required(role='Manager')
+def generate_payslips():
+    try:
+        target = datetime.strptime(request.form.get('target_month'), '%Y-%m')
+    except (TypeError, ValueError):
+        flash('Please provide a valid month to generate payslips for.', 'error')
+        return redirect(url_for('managerdash_view'))
+
+    month, year = target.month, target.year
+    release_date = payslip_release_date(month, year)
+    if date.today() < release_date:
+        flash(f'Payslips for {month:02d}/{year} cannot be generated until {release_date.isoformat()}.', 'error')
+        return redirect(url_for('managerdash_view'))
+
+    config = PayrollConfig.query.first()
+    if config is None:
+        flash('Payroll settings have not been configured yet. Ask an admin to set them up.', 'error')
+        return redirect(url_for('managerdash_view'))
+
+    month_start = date(year, month, 1)
+    next_month = date(year + (month == 12), (month % 12) + 1, 1)
+
+    for person in Security.query.order_by(Security.idno).all():
+        duties = Duty.query.filter(
+            Duty.didno == person.idno,
+            Duty.ddate >= month_start,
+            Duty.ddate < next_month,
+        ).all()
+
+        regular_pay = 0.0
+        night_pay_total = 0.0
+        overtime_pay = 0.0
+        for duty in duties:
+            rate = config.night_pay if duty.shift == SHIFT_NIGHT else config.base_pay
+            if duty.is_overtime:
+                overtime_pay += rate
+            elif duty.shift == SHIFT_NIGHT:
+                night_pay_total += rate
+            else:
+                regular_pay += rate
+
+        bonus_total = sum(
+            b.amount for b in Bonus.query.filter_by(idno=person.idno, month=month, year=year).all()
+        )
+
+        leave_days = approved_leave_days_in_month(person.idno, year, month)
+        excess_leaves = max(0, leave_days - config.allowed_leaves)
+        leave_fine = excess_leaves * config.fine_per_excess_leave
+
+        total = regular_pay + night_pay_total + overtime_pay + bonus_total - leave_fine
+
+        payslip = Payslip.query.filter_by(idno=person.idno, month=month, year=year).first()
+        if payslip is None:
+            payslip = Payslip(idno=person.idno, month=month, year=year)
+            db.session.add(payslip)
+        payslip.regular_pay = regular_pay
+        payslip.night_pay = night_pay_total
+        payslip.overtime_pay = overtime_pay
+        payslip.bonus = bonus_total
+        payslip.leave_fine = leave_fine
+        payslip.total = total
+        payslip.generated_at = datetime.utcnow()
+
+    db.session.commit()
+    flash(f'Payslips generated for {month:02d}/{year}.', 'success')
+    return redirect(url_for('payroll_report', year=year, month=month))
+
+
+@app.route("/manager/payroll/<int:year>/<int:month>")
+@token_required(role='Manager')
+def payroll_report(year, month):
+    payslips = Payslip.query.filter_by(year=year, month=month).order_by(Payslip.idno).all()
+    persons = {p.idno: p for p in Security.query.all()}
+    return render_template(
+        'payroll_report.html', payslips=payslips, persons=persons, year=year, month=month,
+    )
 
 
 @app.route("/manager/roster/generate", methods=['POST'])
