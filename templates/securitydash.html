@@ -212,6 +212,36 @@
     </table>
   </div>
 
+  <div class="card">
+    <table class="table table-hover table-bordered table-dark">
+      <caption>My Payslips</caption>
+      <thead>
+        <tr>
+          <th class="table-title" scope="col">Month</th>
+          <th class="table-title" scope="col">Regular Pay</th>
+          <th class="table-title" scope="col">Night Pay</th>
+          <th class="table-title" scope="col">Overtime Pay</th>
+          <th class="table-title" scope="col">Bonus</th>
+          <th class="table-title" scope="col">Leave Fine</th>
+          <th class="table-title" scope="col">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in my_payslips %}
+        <tr>
+          <td>{{ '%02d' % p.month }}/{{ p.year }}</td>
+          <td>{{ '%.2f' % p.regular_pay }}</td>
+          <td>{{ '%.2f' % p.night_pay }}</td>
+          <td>{{ '%.2f' % p.overtime_pay }}</td>
+          <td>{{ '%.2f' % p.bonus }}</td>
+          <td>{{ '%.2f' % p.leave_fine }}</td>
+          <td>{{ '%.2f' % p.total }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
   <script>
     function msg() {
       alert("Succesfully registered a Requested for a leave");
