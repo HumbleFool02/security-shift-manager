@@ -8,7 +8,8 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/css/bootstrap.min.css"
     integrity="sha384-TX8t27EcRE3e/ihU7zmQxVncDAy5uIKz4rEkgIXeMed4M0jlfIDPvg6uqKI2xXr2" crossorigin="anonymous">
   <link rel="preconnect" href="https://fonts.gstatic.com">
-  <link href="https://fonts.googleapis.com/css2?family=Bree+Serif&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../static/css/base.css">
   <link rel="stylesheet" href="../static/css/dash.css">
   <title>Dashboard</title>
   <link rel="icon" type="image/x-icon" href="../static/images/favicon.svg">
@@ -46,246 +47,297 @@
       </div>
     </nav>
   </div>
-  <div class="username">
-    Welcome {{ username }} !!
-  </div>
-  <div>
-    <a href="/createduty"> Create Duty</a>
-  </div>
-  <div class="card">
-    <table class="table table-bordered table-dark">
-      <caption>List of security personal</caption>
-      <thead>
-        <tr>
-          <th class="table-title" scope="col">Security Personal Name</th>
-          <th class="table-title" scope="col">Identity Number</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for secu in security %}
-        <tr>
-          <td>{{ secu.name }}</td>
-          <td>{{ secu.idno }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  <div class="card">
-    <table class="table table-hover table-bordered table-dark">
-      <caption>Duty Table</caption>
-      <thead>
-        <tr>
-          <th class="table-title" scope="col">Identity Number</th>
-          <th class="table-title" scope="col">Duty Date</th>
-          <th class="table-title" scope="col">Shift</th>
-          <th class="table-title" scope="col">Place</th>
-          <th class="table-title" scope="col">Overtime</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for dty in duty %}
-        <tr>
-          <td>{{ dty.didno }}</td>
-          <td>{{ dty.ddate }}</td>
-          <td>{{ dty.shift }} ({{ SHIFT_TIMES[dty.shift][0] }}-{{ SHIFT_TIMES[dty.shift][1] }})</td>
-          <td>{{ dty.place.name }}</td>
-          <td>{{ 'Yes' if dty.is_overtime else 'No' }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  <div class="card">
-    <table class="table table-hover table-bordered table-dark">
-      <caption>Leave requested by Security personal</caption>
-      <thead>
-        <tr>
-          <th class="table-title" scope="col">Identity Number</th>
-          <th class="table-title" scope="col">Start Date</th>
-          <th class="table-title" scope="col">End Date</th>
-          <th class="table-title" scope="col">Reason</th>
-          <th class="table-title" scope="col">Leave days this month</th>
-          <th class="table-title" scope="col">Action</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for abs in abes %}
-        <tr>
-          <td>{{ abs.idno }}</td>
-          <td>{{ abs.sdate }}</td>
-          <td>{{ abs.edate }}</td>
-          <td>{{ abs.reason }}</td>
-          <td>{{ leave_counts.get(abs.idno, 0) }}</td>
-          <td>
-            <form action="{{ url_for('approve_leave', absence_id=abs.id) }}" method="post" style="display:inline">
-              <button type="submit" class="btn btn-sm btn-success">Approve</button>
-            </form>
-            <form action="{{ url_for('decline_leave', absence_id=abs.id) }}" method="post" style="display:inline">
-              <button type="submit" class="btn btn-sm btn-danger">Decline</button>
-            </form>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-
-  <div class="card">
-    <table class="table table-hover table-bordered table-dark">
-      <caption>Approved Leave</caption>
-      <thead>
-        <tr>
-          <th class="table-title" scope="col">Identity Number</th>
-          <th class="table-title" scope="col">Start Date</th>
-          <th class="table-title" scope="col">End Date</th>
-          <th class="table-title" scope="col">Reason</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for abs in approved_leaves %}
-        <tr>
-          <td>{{ abs.idno }}</td>
-          <td>{{ abs.sdate }}</td>
-          <td>{{ abs.edate }}</td>
-          <td>{{ abs.reason }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-
-  <div class="card">
-    <table class="table table-hover table-bordered table-dark">
-      <caption>Overtime requested by Security personal</caption>
-      <thead>
-        <tr>
-          <th class="table-title" scope="col">Identity Number</th>
-          <th class="table-title" scope="col">Date</th>
-          <th class="table-title" scope="col">Shift</th>
-          <th class="table-title" scope="col">Place</th>
-          <th class="table-title" scope="col">Action</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for req in overtime_requests %}
-        <tr>
-          <td>{{ req.idno }}</td>
-          <td>{{ req.ddate }}</td>
-          <td>{{ req.shift }}</td>
-          <td>{{ req.place.name }}</td>
-          <td>
-            <form action="{{ url_for('approve_overtime', req_id=req.id) }}" method="post" style="display:inline">
-              <button type="submit" class="btn btn-sm btn-success">Approve</button>
-            </form>
-            <form action="{{ url_for('decline_overtime', req_id=req.id) }}" method="post" style="display:inline">
-              <button type="submit" class="btn btn-sm btn-danger">Decline</button>
-            </form>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-
-  <div class="card">
-    <div class="container px-4">
-      <h3>Generate 7-Day Roster</h3>
-      <form action="{{ url_for('generate_roster_route') }}" method="post" class="form-row">
-        <div class="col-lg-4 col-4">
-          <label>Window Start Date</label>
-          <input type="date" name="start_date" class="form-control" required />
-        </div>
-        <div class="col-lg-4 col-4" style="align-self: flex-end;">
-          <button type="submit" class="btn btn-primary">Generate Draft Roster</button>
-        </div>
-      </form>
+  <div class="container">
+    <div class="username">
+      Welcome {{ username }} !!
     </div>
-    <table class="table table-hover table-bordered table-dark">
-      <caption>Roster Batches</caption>
-      <thead>
-        <tr>
-          <th class="table-title" scope="col">Window</th>
-          <th class="table-title" scope="col">Status</th>
-          <th class="table-title" scope="col">Review</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for batch in batches %}
-        <tr>
-          <td>{{ batch.start_date }} to {{ batch.end_date }}</td>
-          <td>{{ batch.status }}</td>
-          <td><a href="{{ url_for('roster_review', batch_id=batch.id) }}">View</a></td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
 
-  <div class="card">
-    <div class="container px-4">
-      <h3>Add Bonus</h3>
-      <form action="{{ url_for('add_bonus') }}" method="post" class="form-row">
-        <div class="col-lg-3 col-3">
-          <label>Security Person</label>
-          <select name="idno" class="form-control" required>
+    <div class="tabs-nav" role="tablist">
+      <button type="button" class="tab-btn active" data-tab="personnel">Personnel</button>
+      <button type="button" class="tab-btn" data-tab="duties">Duties &amp; Roster</button>
+      <button type="button" class="tab-btn" data-tab="leave">Leave &amp; Overtime</button>
+      <button type="button" class="tab-btn" data-tab="payroll">Payroll</button>
+    </div>
+
+    <div class="tab-panel" id="tab-personnel">
+      <div class="card">
+        <table class="table table-hover table-bordered">
+          <caption>List of security personal</caption>
+          <thead>
+            <tr>
+              <th class="table-title" scope="col">Security Personal Name</th>
+              <th class="table-title" scope="col">Identity Number</th>
+            </tr>
+          </thead>
+          <tbody>
             {% for secu in security %}
-            <option value="{{ secu.idno }}">{{ secu.name }} ({{ secu.idno }})</option>
+            <tr>
+              <td>{{ secu.name }}</td>
+              <td class="mono">{{ secu.idno }}</td>
+            </tr>
             {% endfor %}
-          </select>
-        </div>
-        <div class="col-lg-3 col-3">
-          <label>Amount</label>
-          <input type="number" step="0.01" name="amount" class="form-control" required />
-        </div>
-        <div class="col-lg-3 col-3">
-          <label>Target Month</label>
-          <input type="month" name="target_month" class="form-control" required />
-        </div>
-        <div class="col-lg-3 col-3" style="align-self: flex-end;">
-          <button type="submit" class="btn btn-primary">Add Bonus</button>
-        </div>
-      </form>
+          </tbody>
+        </table>
+      </div>
     </div>
-  </div>
 
-  <div class="card">
-    <div class="container px-4">
-      <h3>Generate Monthly Payslips</h3>
-      <p>Payslips for a month unlock on the 1st of the following month.</p>
-      <form action="{{ url_for('generate_payslips') }}" method="post" class="form-row">
-        <div class="col-lg-4 col-4">
-          <label>Month</label>
-          <input type="month" name="target_month" class="form-control" required />
+    <div class="tab-panel hidden" id="tab-duties">
+      <div>
+        <a href="/createduty" class="btn" style="display:inline-block; width:auto; padding:0 20px; margin-bottom:16px;">+ Create Duty</a>
+      </div>
+      <div class="card">
+        <table class="table table-hover table-bordered">
+          <caption>Duty Table</caption>
+          <thead>
+            <tr>
+              <th class="table-title" scope="col">Identity Number</th>
+              <th class="table-title" scope="col">Duty Date</th>
+              <th class="table-title" scope="col">Shift</th>
+              <th class="table-title" scope="col">Place</th>
+              <th class="table-title" scope="col">Overtime</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for dty in duty %}
+            <tr>
+              <td class="mono">{{ dty.didno }}</td>
+              <td class="mono">{{ dty.ddate }}</td>
+              <td>
+                <span class="chip chip-{{ dty.shift|lower }}">{{ dty.shift }}</span>
+                <span class="mono text-muted" style="font-size:0.75rem;">{{ SHIFT_TIMES[dty.shift][0] }}&ndash;{{ SHIFT_TIMES[dty.shift][1] }}</span>
+              </td>
+              <td class="mono">{{ dty.place.name }}</td>
+              <td>{{ 'Yes' if dty.is_overtime else 'No' }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <div class="container px-4">
+          <h3>Generate 7-Day Roster</h3>
+          <form action="{{ url_for('generate_roster_route') }}" method="post" class="form-row">
+            <div class="col-lg-4 col-4">
+              <label>Window Start Date</label>
+              <input type="date" name="start_date" class="form-control" required />
+            </div>
+            <div class="col-lg-4 col-4" style="align-self: flex-end;">
+              <button type="submit" class="btn btn-primary">Generate Draft Roster</button>
+            </div>
+          </form>
         </div>
-        <div class="col-lg-4 col-4" style="align-self: flex-end;">
-          <button type="submit" class="btn btn-primary">Generate Payslips</button>
-        </div>
-      </form>
+        <table class="table table-hover table-bordered">
+          <caption>Roster Batches</caption>
+          <thead>
+            <tr>
+              <th class="table-title" scope="col">Window</th>
+              <th class="table-title" scope="col">Status</th>
+              <th class="table-title" scope="col">Review</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for batch in batches %}
+            <tr>
+              <td class="mono">{{ batch.start_date }} to {{ batch.end_date }}</td>
+              <td>
+                {% if batch.status == 'published' %}
+                <span class="status-badge status-approved"><i class="fa-solid fa-check"></i> Published</span>
+                {% else %}
+                <span class="status-badge status-pending"><i class="fa-solid fa-pen"></i> Draft</span>
+                {% endif %}
+              </td>
+              <td><a href="{{ url_for('roster_review', batch_id=batch.id) }}">View</a></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
     </div>
-    <table class="table table-hover table-bordered table-dark">
-      <caption>Generated Payroll Months</caption>
-      <thead>
-        <tr>
-          <th class="table-title" scope="col">Month</th>
-          <th class="table-title" scope="col">Report</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for yr, mo in generated_months %}
-        <tr>
-          <td>{{ '%02d' % mo }}/{{ yr }}</td>
-          <td><a href="{{ url_for('payroll_report', year=yr, month=mo) }}">View</a></td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+
+    <div class="tab-panel hidden" id="tab-leave">
+      <div class="card">
+        <table class="table table-hover table-bordered">
+          <caption>Leave requested by Security personal</caption>
+          <thead>
+            <tr>
+              <th class="table-title" scope="col">Identity Number</th>
+              <th class="table-title" scope="col">Start Date</th>
+              <th class="table-title" scope="col">End Date</th>
+              <th class="table-title" scope="col">Reason</th>
+              <th class="table-title" scope="col">Leave days this month</th>
+              <th class="table-title" scope="col">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for abs in abes %}
+            <tr>
+              <td class="mono">{{ abs.idno }}</td>
+              <td class="mono">{{ abs.sdate }}</td>
+              <td class="mono">{{ abs.edate }}</td>
+              <td>{{ abs.reason }}</td>
+              <td>{{ leave_counts.get(abs.idno, 0) }}</td>
+              <td>
+                <form action="{{ url_for('approve_leave', absence_id=abs.id) }}" method="post" style="display:inline">
+                  <button type="submit" class="btn btn-sm btn-success">Approve</button>
+                </form>
+                <form action="{{ url_for('decline_leave', absence_id=abs.id) }}" method="post" style="display:inline">
+                  <button type="submit" class="btn btn-sm btn-danger">Decline</button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <table class="table table-hover table-bordered">
+          <caption>Approved Leave</caption>
+          <thead>
+            <tr>
+              <th class="table-title" scope="col">Identity Number</th>
+              <th class="table-title" scope="col">Start Date</th>
+              <th class="table-title" scope="col">End Date</th>
+              <th class="table-title" scope="col">Reason</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for abs in approved_leaves %}
+            <tr>
+              <td class="mono">{{ abs.idno }}</td>
+              <td class="mono">{{ abs.sdate }}</td>
+              <td class="mono">{{ abs.edate }}</td>
+              <td>{{ abs.reason }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <table class="table table-hover table-bordered">
+          <caption>Overtime requested by Security personal</caption>
+          <thead>
+            <tr>
+              <th class="table-title" scope="col">Identity Number</th>
+              <th class="table-title" scope="col">Date</th>
+              <th class="table-title" scope="col">Shift</th>
+              <th class="table-title" scope="col">Place</th>
+              <th class="table-title" scope="col">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for req in overtime_requests %}
+            <tr>
+              <td class="mono">{{ req.idno }}</td>
+              <td class="mono">{{ req.ddate }}</td>
+              <td><span class="chip chip-{{ req.shift|lower }}">{{ req.shift }}</span></td>
+              <td class="mono">{{ req.place.name }}</td>
+              <td>
+                <form action="{{ url_for('approve_overtime', req_id=req.id) }}" method="post" style="display:inline">
+                  <button type="submit" class="btn btn-sm btn-success">Approve</button>
+                </form>
+                <form action="{{ url_for('decline_overtime', req_id=req.id) }}" method="post" style="display:inline">
+                  <button type="submit" class="btn btn-sm btn-danger">Decline</button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="tab-panel hidden" id="tab-payroll">
+      <div class="card">
+        <div class="container px-4">
+          <h3>Add Bonus</h3>
+          <form action="{{ url_for('add_bonus') }}" method="post" class="form-row">
+            <div class="col-lg-3 col-3">
+              <label>Security Person</label>
+              <select name="idno" class="form-control" required>
+                {% for secu in security %}
+                <option value="{{ secu.idno }}">{{ secu.name }} ({{ secu.idno }})</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-lg-3 col-3">
+              <label>Amount</label>
+              <input type="number" step="0.01" name="amount" class="form-control" required />
+            </div>
+            <div class="col-lg-3 col-3">
+              <label>Target Month</label>
+              <input type="month" name="target_month" class="form-control" required />
+            </div>
+            <div class="col-lg-3 col-3" style="align-self: flex-end;">
+              <button type="submit" class="btn btn-primary">Add Bonus</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="container px-4">
+          <h3>Generate Monthly Payslips</h3>
+          <p>Payslips for a month unlock on the 1st of the following month.</p>
+          <form action="{{ url_for('generate_payslips') }}" method="post" class="form-row">
+            <div class="col-lg-4 col-4">
+              <label>Month</label>
+              <input type="month" name="target_month" class="form-control" required />
+            </div>
+            <div class="col-lg-4 col-4" style="align-self: flex-end;">
+              <button type="submit" class="btn btn-primary">Generate Payslips</button>
+            </div>
+          </form>
+        </div>
+        <table class="table table-hover table-bordered">
+          <caption>Generated Payroll Months</caption>
+          <thead>
+            <tr>
+              <th class="table-title" scope="col">Month</th>
+              <th class="table-title" scope="col">Report</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for yr, mo in generated_months %}
+            <tr>
+              <td class="mono">{{ '%02d' % mo }}/{{ yr }}</td>
+              <td><a href="{{ url_for('payroll_report', year=yr, month=mo) }}">View</a></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
   </div>
 
   <script>
     function msg() {
       alert("Sucessfully Created Routine");
     }
+
+    (function () {
+      var tabs = document.querySelectorAll('.tab-btn');
+      var panels = document.querySelectorAll('.tab-panel');
+
+      function activate(name) {
+        tabs.forEach(function (b) { b.classList.toggle('active', b.dataset.tab === name); });
+        panels.forEach(function (p) { p.classList.toggle('hidden', p.id !== 'tab-' + name); });
+      }
+
+      tabs.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          activate(btn.dataset.tab);
+          sessionStorage.setItem('managerdash_tab', btn.dataset.tab);
+        });
+      });
+
+      var saved = sessionStorage.getItem('managerdash_tab');
+      if (saved && document.getElementById('tab-' + saved)) {
+        activate(saved);
+      }
+    })();
   </script>
 </body>
 
