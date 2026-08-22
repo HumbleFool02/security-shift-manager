@@ -1,15 +1,3 @@
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  font-family: "Bree Serif", sans-serif;
-  font-weight: 200;
-}
-
-body {
-  background: rgba(219, 226, 226);
-}
-
 .row {
   background: white;
   border-radius: 30px;
@@ -21,75 +9,107 @@ body {
   border-top-left-radius: 30px;
   border-bottom-left-radius: 30px;
 }
+
 .card {
   height: fit-content;
   width: fit-content;
+  min-width: 320px;
   background: #fff;
+  border: 1px solid #E2E0DB;
+  border-radius: 8px;
+  margin: 0 auto 24px;
+  padding: 16px;
 }
-.header {
-  width: 100%;
-  height: 10vh;
-  background-size: 100% 100%;
-  position: relative;
-}
+
 .table-title {
-  color: rgb(65, 211, 221);
+  color: var(--ink);
   text-align: center;
-  text-emphasis: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  font-size: 0.8rem;
+  font-family: var(--font-display);
 }
+
 .username {
   font-size: xx-large;
   text-align: left;
-  color: rgb(131, 62, 62);
+  color: var(--ink);
+  margin: 20px 0;
 }
 
-.btn {
-  border: 1px solid #000;
-  outline: none;
-  height: 40px;
-  width: 100%;
-  background-color: #fff;
-  color: #000;
-  border-radius: 4px;
-  font-weight: bold;
-}
-
-.btn:hover {
-  background: #000;
-  border: 1px solid;
-  color: #fff;
-}
-
-.form-row {
-  text-align: left;
-  padding-bottom: 20px;
-  justify-content: center;
-  justify-items: center;
-}
 .tablel {
   align-self: center;
 }
+
 caption {
   display: table-caption;
   text-align: center;
   caption-side: top;
+  font-family: var(--font-display);
+  font-weight: 600;
+  color: var(--ink);
+  padding-bottom: 8px;
 }
+
 .butn {
   text-align: center;
-  border: 1px solid #000;
+  border: 1px solid var(--ink);
   outline: none;
   height: 35px;
   width: 90%;
   background-color: #fff;
-  color: #000;
+  color: var(--ink);
   border-radius: 4px;
   font-weight: bold;
   justify-content: left;
   justify-items: left;
 }
+
 .form-roww {
   text-align: left;
   padding-bottom: 10px;
   justify-content: left;
   justify-items: left;
+}
+
+/* Dashboard tables read as light content on --paper, not Bootstrap's table-dark */
+.table {
+  background-color: #fff;
+  color: var(--slate);
+}
+.table thead th {
+  border-bottom: 2px solid var(--ink);
+}
+.table td, .table th {
+  vertical-align: middle;
+}
+
+/* Tabs (managerdash.html) */
+.tabs-nav {
+  display: flex;
+  gap: 4px;
+  margin: 20px 0;
+  border-bottom: 2px solid #E2E0DB;
+  flex-wrap: wrap;
+}
+.tab-btn {
+  font-family: var(--font-display);
+  font-weight: 600;
+  background: none;
+  border: none;
+  padding: 12px 20px;
+  cursor: pointer;
+  color: var(--slate);
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+}
+.tab-btn:hover {
+  color: var(--ink);
+}
+.tab-btn.active {
+  color: var(--ink);
+  border-bottom-color: var(--ink);
+}
+.tab-panel.hidden {
+  display: none;
 }

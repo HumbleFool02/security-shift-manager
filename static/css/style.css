@@ -1,14 +1,5 @@
-*{
-  margin: 0;
-  padding:0;
-  box-sizing: border-box;
-  font-family: 'Bree Serif', sans-serif;
-}
-.header{
-  width: 100%;
-  height:40vh;
-  background-size: 100% 100%;
-  position: relative;
+.header {
+  height: 40vh;
 }
 #loader {
     position: fixed;
@@ -89,12 +80,12 @@ h1{
   padding: 20px 0px !important;
 }
 .card-footer a{
-  border: 1px solid #b616ca;
+  border: 1px solid var(--ink);
   border-radius: 70px;
   margin: 0 5px;
   padding: 7px 20px;
   outline: none;
-  color:#b616ca;
+  color:var(--ink);
   font-weight:300;
   text-align: center;
   line-height: 1.4;
@@ -108,14 +99,14 @@ h1{
 }
 .fa-big{
     font-size: 50px;
-    color: #b616ca;
+    color: var(--ink);
  }
 .card:hover{
   transform: translateY(-20px);
   box-shadow: 0 0 20px 0 rgba(0,0,0,0.4);
 }
 .card:hover .card-body h2{
-  color:#b616ca;
+  color:var(--ink);
 }
 @keyframes gradient {
 	0% {

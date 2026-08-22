@@ -1,0 +1,128 @@
+:root {
+  --ink: #14181F;
+  --paper: #F7F6F3;
+  --slate: #4A5568;
+  --shift-morning: #E1A736;
+  --shift-evening: #2C6E8E;
+  --shift-night: #5B4B8A;
+  --status-approved: #1F7A5C;
+  --status-declined: #C1521B;
+
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: var(--font-body);
+}
+
+body {
+  background: var(--paper);
+  color: var(--slate);
+}
+
+h1, h2, h3, h4, h5, h6,
+.navbar-brand,
+.username {
+  font-family: var(--font-display);
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+/* Header / nav use --ink everywhere, overriding Bootstrap's .bg-light utility */
+.header {
+  width: 100%;
+  height: 10vh;
+  background-size: 100% 100%;
+  position: relative;
+  background-color: var(--ink) !important;
+}
+
+.navbar {
+  background-color: var(--ink) !important;
+}
+
+.navbar-brand,
+.navbar .nav-link {
+  color: var(--paper) !important;
+}
+
+.navbar-toggler-icon {
+  filter: invert(1);
+}
+
+.btn {
+  border: 1px solid var(--ink);
+  outline: none;
+  height: 40px;
+  width: 100%;
+  background-color: #fff;
+  color: var(--ink);
+  border-radius: 4px;
+  font-weight: bold;
+}
+
+.btn:hover {
+  background: var(--ink);
+  border: 1px solid var(--ink);
+  color: #fff;
+}
+
+.form-row {
+  text-align: left;
+  padding-bottom: 20px;
+  justify-content: center;
+  justify-items: center;
+}
+
+/* Shift chips: same visual treatment everywhere a shift appears */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+  line-height: 1.6;
+}
+.chip-morning { background-color: var(--shift-morning); }
+.chip-evening { background-color: var(--shift-evening); }
+.chip-night   { background-color: var(--shift-night); }
+
+/* Status badges: color + icon + text label together, never color alone */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.status-approved {
+  background-color: rgba(31, 122, 92, 0.12);
+  border-color: var(--status-approved);
+  color: var(--status-approved);
+}
+.status-declined {
+  background-color: rgba(193, 82, 27, 0.12);
+  border-color: var(--status-declined);
+  color: var(--status-declined);
+}
+.status-pending {
+  background-color: rgba(74, 85, 104, 0.12);
+  border-color: var(--slate);
+  color: var(--slate);
+}
