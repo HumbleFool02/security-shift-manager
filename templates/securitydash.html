@@ -8,7 +8,8 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/css/bootstrap.min.css"
     integrity="sha384-TX8t27EcRE3e/ihU7zmQxVncDAy5uIKz4rEkgIXeMed4M0jlfIDPvg6uqKI2xXr2" crossorigin="anonymous">
   <link rel="preconnect" href="https://fonts.gstatic.com">
-  <link href="https://fonts.googleapis.com/css2?family=Bree+Serif&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../static/css/base.css">
   <link rel="stylesheet" href="../static/css/dash.css">
   <title>Dashboard</title>
   <link rel="icon" type="image/x-icon" href="../static/images/favicon.svg">
@@ -50,7 +51,7 @@
     Approved leave days taken this month: {{ leave_days }}
   </div>
   <div>
-    <table class="table table-hover table-bordered table-dark">
+    <table class="table table-hover table-bordered">
       <caption>Upcoming 7 Days</caption>
       <thead>
         <tr>
@@ -63,9 +64,12 @@
       <tbody>
         {% for dty in duty %}
         <tr>
-          <td>{{ dty.ddate }}</td>
-          <td>{{ dty.shift }} ({{ SHIFT_TIMES[dty.shift][0] }}-{{ SHIFT_TIMES[dty.shift][1] }})</td>
-          <td>{{ dty.place.name }}</td>
+          <td class="mono">{{ dty.ddate }}</td>
+          <td>
+            <span class="chip chip-{{ dty.shift|lower }}">{{ dty.shift }}</span>
+            <span class="mono text-muted" style="font-size:0.75rem;">{{ SHIFT_TIMES[dty.shift][0] }}&ndash;{{ SHIFT_TIMES[dty.shift][1] }}</span>
+          </td>
+          <td class="mono">{{ dty.place.name }}</td>
           <td>{{ 'Yes' if dty.is_overtime else 'No' }}</td>
         </tr>
         {% endfor %}
@@ -165,7 +169,7 @@
   </section>
 
   <div class="card">
-    <table class="table table-hover table-bordered table-dark">
+    <table class="table table-hover table-bordered">
       <caption>My Leave Requests</caption>
       <thead>
         <tr>
@@ -178,10 +182,18 @@
       <tbody>
         {% for lv in my_leaves %}
         <tr>
-          <td>{{ lv.sdate }}</td>
-          <td>{{ lv.edate }}</td>
+          <td class="mono">{{ lv.sdate }}</td>
+          <td class="mono">{{ lv.edate }}</td>
           <td>{{ lv.reason }}</td>
-          <td>{{ lv.status }}</td>
+          <td>
+            {% if lv.status == 'Approved' %}
+            <span class="status-badge status-approved"><i class="fa-solid fa-check"></i> Approved</span>
+            {% elif lv.status == 'Declined' %}
+            <span class="status-badge status-declined"><i class="fa-solid fa-xmark"></i> Declined</span>
+            {% else %}
+            <span class="status-badge status-pending"><i class="fa-solid fa-clock"></i> Pending</span>
+            {% endif %}
+          </td>
         </tr>
         {% endfor %}
       </tbody>
@@ -189,7 +201,7 @@
   </div>
 
   <div class="card">
-    <table class="table table-hover table-bordered table-dark">
+    <table class="table table-hover table-bordered">
       <caption>My Overtime Requests</caption>
       <thead>
         <tr>
@@ -202,10 +214,18 @@
       <tbody>
         {% for req in my_overtime %}
         <tr>
-          <td>{{ req.ddate }}</td>
-          <td>{{ req.shift }}</td>
-          <td>{{ req.place.name }}</td>
-          <td>{{ req.status }}</td>
+          <td class="mono">{{ req.ddate }}</td>
+          <td><span class="chip chip-{{ req.shift|lower }}">{{ req.shift }}</span></td>
+          <td class="mono">{{ req.place.name }}</td>
+          <td>
+            {% if req.status == 'Approved' %}
+            <span class="status-badge status-approved"><i class="fa-solid fa-check"></i> Approved</span>
+            {% elif req.status == 'Declined' %}
+            <span class="status-badge status-declined"><i class="fa-solid fa-xmark"></i> Declined</span>
+            {% else %}
+            <span class="status-badge status-pending"><i class="fa-solid fa-clock"></i> Pending</span>
+            {% endif %}
+          </td>
         </tr>
         {% endfor %}
       </tbody>
@@ -213,7 +233,7 @@
   </div>
 
   <div class="card">
-    <table class="table table-hover table-bordered table-dark">
+    <table class="table table-hover table-bordered">
       <caption>My Payslips</caption>
       <thead>
         <tr>
@@ -229,13 +249,19 @@
       <tbody>
         {% for p in my_payslips %}
         <tr>
-          <td>{{ '%02d' % p.month }}/{{ p.year }}</td>
-          <td>{{ '%.2f' % p.regular_pay }}</td>
-          <td>{{ '%.2f' % p.night_pay }}</td>
-          <td>{{ '%.2f' % p.overtime_pay }}</td>
-          <td>{{ '%.2f' % p.bonus }}</td>
-          <td>{{ '%.2f' % p.leave_fine }}</td>
-          <td>{{ '%.2f' % p.total }}</td>
+          <td class="mono">{{ '%02d' % p.month }}/{{ p.year }}</td>
+          <td class="mono">{{ '%.2f' % p.regular_pay }}</td>
+          <td class="mono">{{ '%.2f' % p.night_pay }}</td>
+          <td class="mono">{{ '%.2f' % p.overtime_pay }}</td>
+          <td class="mono">{{ '%.2f' % p.bonus }}</td>
+          <td>
+            {% if p.leave_fine > 0 %}
+            <span class="status-badge status-declined mono"><i class="fa-solid fa-triangle-exclamation"></i> {{ '%.2f' % p.leave_fine }}</span>
+            {% else %}
+            <span class="mono">{{ '%.2f' % p.leave_fine }}</span>
+            {% endif %}
+          </td>
+          <td class="mono">{{ '%.2f' % p.total }}</td>
         </tr>
         {% endfor %}
       </tbody>
