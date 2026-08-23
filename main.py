@@ -441,7 +441,8 @@ def createduty():
         flash('Duty created.', 'success')
         return redirect(url_for('createduty'))
 
-    return render_template("createduty.html")
+    places = Place.query.order_by(Place.id).all()
+    return render_template("createduty.html", places=places)
 
 
 @app.route("/securitydashboard", methods=['GET', 'POST'])
