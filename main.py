@@ -37,6 +37,24 @@ SHIFT_TIMES = {
 app.jinja_env.globals['SHIFTS'] = SHIFTS
 app.jinja_env.globals['SHIFT_TIMES'] = SHIFT_TIMES
 
+# Bump whenever static/css/*.css changes. None of the stylesheet <link> tags
+# were versioned before this, so a browser that cached an old CSS file keeps
+# serving it indefinitely for any page it doesn't hard-refresh -- the leading
+# suspect for why a shared CSS fix "worked everywhere except one page" in
+# manual testing. NOTE: this was set to '2' several sessions ago and never
+# bumped despite many subsequent CSS edits (card-header theming, .row
+# removal, form-row padding, nav-height, etc.) -- silently defeating its own
+# purpose. That gap is the leading suspect for "nav renders a different
+# color on some pages": any browser that cached dash.css/base.css under
+# ?v=2 before those edits landed would keep serving the stale, pre-ink-color
+# version indefinitely for any page it hadn't hard-refreshed since. The CSS
+# rule itself (.header/.navbar background-color: var(--ink) !important) is
+# unscoped and byte-identical across all 11 templates -- verified via grep,
+# nothing page-specific was found. Bumped here; if the inconsistency
+# persists after a hard refresh, that rules out caching.
+STATIC_VERSION = '3'
+app.jinja_env.globals['STATIC_VERSION'] = STATIC_VERSION
+
 # Payslips for a given month can only be generated once this day of the
 # FOLLOWING month has been reached (e.g. July's payroll unlocks Aug 1).
 # Plain Python constant, not admin-editable, not stored in the DB.
@@ -67,6 +85,11 @@ class Absence(db.Model):
     reason = db.Column(db.String(120), unique=False, nullable=False)
     status = db.Column(db.String(120), unique=False, nullable=False)
     timestamp = db.Column(db.DateTime, unique=False, nullable=False)
+    # True while an Approved leave has a cancellation awaiting manager
+    # review (set by cancel_leave, cleared by approve/decline_leave_cancellation).
+    # Status itself stays 'Approved' until the manager actually approves the
+    # cancellation, at which point it becomes 'Cancelled'.
+    cancellation_requested = db.Column(db.Boolean, nullable=False, default=False)
 
 class Place(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -192,6 +215,46 @@ def generate_token(idno, role):
     return jwt.encode(payload, app.secret_key, algorithm='HS256')
 
 
+def current_session():
+    token = request.cookies.get('token')
+    if not token:
+        return None
+    try:
+        payload = jwt.decode(token, app.secret_key, algorithms=['HS256'])
+    except jwt.PyJWTError:
+        return None
+    return {'idno': payload.get('idno'), 'role': payload.get('role')}
+
+
+DASHBOARD_ENDPOINT_FOR_ROLE = {
+    'Manager': 'managerdash_view',
+    'Security': 'securitydashboard',
+    'Admin': 'admin_dashboard',
+}
+
+ROLE_MODEL = {
+    'Manager': Manager,
+    'Security': Security,
+    'Admin': Admin,
+}
+
+
+def build_index_context():
+    session = current_session()
+    if session is None:
+        return {'viewer': None, 'viewer_name': None, 'dashboard_url': None}
+
+    model = ROLE_MODEL.get(session['role'])
+    row = model.query.filter_by(idno=session['idno']).first() if model else None
+    endpoint = DASHBOARD_ENDPOINT_FOR_ROLE.get(session['role'])
+
+    return {
+        'viewer': session,
+        'viewer_name': row.username if row else session['idno'],
+        'dashboard_url': url_for(endpoint) if endpoint else None,
+    }
+
+
 def token_required(role=None):
     def decorator(f):
         @wraps(f)
@@ -274,13 +337,18 @@ def generate_roster(start_date, end_date):
     return batch
 
 
-def render_manager_dashboard():
+def render_manager_dashboard(duty_date=None):
+    duty_date = duty_date or date.today()
+
     manager = Manager.query.filter_by(idno=g.user['idno']).first()
     security = Security.query.filter_by(domain='Security').order_by(Security.name).all()
     pending_leaves = Absence.query.filter_by(status='Pending').order_by(Absence.timestamp).all()
     approved_leaves = Absence.query.filter_by(status='Approved').order_by(Absence.sdate).all()
+    pending_cancellations = Absence.query.filter_by(
+        status='Approved', cancellation_requested=True
+    ).order_by(Absence.sdate).all()
     pending_overtime = OvertimeRequest.query.filter_by(status='Pending').order_by(OvertimeRequest.timestamp).all()
-    duty = Duty.query.order_by(Duty.ddate).all()
+    duty = Duty.query.filter_by(ddate=duty_date).order_by(Duty.ddate).all()
     batches = RosterBatch.query.order_by(RosterBatch.start_date.desc()).all()
     generated_months = db.session.query(Payslip.year, Payslip.month).distinct().order_by(
         Payslip.year.desc(), Payslip.month.desc()
@@ -289,31 +357,61 @@ def render_manager_dashboard():
     today = date.today()
     leave_counts = {p.idno: approved_leave_days_in_month(p.idno, today.year, today.month) for p in security}
 
+    # Monday-through-Sunday (ISO) week containing duty_date, for the day-chip
+    # strip -- matches <input type="week">'s native Monday-start week
+    # exactly, so the picker's highlighted week and this display are always
+    # the same 7 days with no conversion between them. isoweekday() is
+    # 1=Monday..7=Sunday, so isoweekday()-1 is days-since-Monday (0 for
+    # Monday itself).
+    week_monday = duty_date - timedelta(days=duty_date.isoweekday() - 1)
+    week_days = [week_monday + timedelta(days=i) for i in range(7)]
+
     return render_template(
         'managerdash.html', security=security, abes=pending_leaves,
         approved_leaves=approved_leaves,
+        pending_cancellations=pending_cancellations,
         overtime_requests=pending_overtime, duty=duty, batches=batches,
         leave_counts=leave_counts, username=manager.username if manager else g.user['idno'],
         generated_months=generated_months,
+        duty_date=duty_date,
+        prev_duty_date=(duty_date - timedelta(days=1)).isoformat(),
+        next_duty_date=(duty_date + timedelta(days=1)).isoformat(),
+        week_days=week_days,
     )
 
 
 @app.route("/")
 def home():
-    return render_template('index.html')
+    return render_template('index.html', **build_index_context())
 
 @app.route("/index")
 def index():
-    return render_template('index.html')
+    return render_template('index.html', **build_index_context())
 
 
 @app.route("/ManagerLogin", methods=['GET', 'POST'])
 def managerLogin():
     if request.method == 'GET':
-        return render_template('ManagerLogin.html')
+        session = current_session()
+        blocking_role = session['role'] if session and session['role'] != 'Manager' else None
+        return render_template('ManagerLogin.html', blocking_role=blocking_role)
 
     username = request.form.get('username')
     pword = request.form.get('pword')
+
+    session = current_session()
+    if session is not None:
+        if session['role'] != 'Manager':
+            flash(f"You're already logged in as a {session['role']}. Log out first to sign in as a different role.", 'error')
+            return redirect(url_for('managerLogin'))
+        current = Manager.query.filter_by(idno=session['idno']).first()
+        if current is not None and current.username == username:
+            return redirect(url_for('managerdash_view'))
+
+    if not username or not pword:
+        flash('Please enter both a username and a password.', 'error')
+        return redirect(url_for('managerLogin'))
+
     data = Manager.query.filter_by(username=username).first()
 
     if data is not None and bcrypt.check_password_hash(data.pword, pword):
@@ -329,16 +427,52 @@ def managerLogin():
 @app.route("/managerdash")
 @token_required(role='Manager')
 def managerdash_view():
-    return render_manager_dashboard()
+    week_str = request.args.get('week')
+    duty_date = None
+
+    if week_str:
+        try:
+            iso_year_str, iso_week_str = week_str.split('-W')
+            # date.fromisocalendar(..., 1) is the Monday of that ISO week --
+            # used directly, with no shift, since the app's week display is
+            # now Monday-start too (see render_manager_dashboard).
+            duty_date = date.fromisocalendar(int(iso_year_str), int(iso_week_str), 1)
+        except (ValueError, IndexError):
+            duty_date = None
+
+    if duty_date is None:
+        duty_date_str = request.args.get('duty_date')
+        try:
+            duty_date = parse_date(duty_date_str) if duty_date_str else date.today()
+        except (TypeError, ValueError):
+            duty_date = date.today()
+
+    return render_manager_dashboard(duty_date)
 
 
 @app.route("/SecurityLogin", methods=['GET', 'POST'])
 def securityLogin():
     if request.method == 'GET':
-        return render_template('SecurityLogin.html')
+        session = current_session()
+        blocking_role = session['role'] if session and session['role'] != 'Security' else None
+        return render_template('SecurityLogin.html', blocking_role=blocking_role)
 
     username = request.form.get('username')
     pword = request.form.get('pword')
+
+    session = current_session()
+    if session is not None:
+        if session['role'] != 'Security':
+            flash(f"You're already logged in as a {session['role']}. Log out first to sign in as a different role.", 'error')
+            return redirect(url_for('securityLogin'))
+        current = Security.query.filter_by(idno=session['idno']).first()
+        if current is not None and current.username == username:
+            return redirect(url_for('securitydashboard'))
+
+    if not username or not pword:
+        flash('Please enter both a username and a password.', 'error')
+        return redirect(url_for('securityLogin'))
+
     data1 = Security.query.filter_by(username=username).first()
 
     if data1 is not None and bcrypt.check_password_hash(data1.pword, pword):
@@ -354,10 +488,26 @@ def securityLogin():
 @app.route("/AdminLogin", methods=['GET', 'POST'])
 def adminLogin():
     if request.method == 'GET':
-        return render_template('AdminLogin.html')
+        session = current_session()
+        blocking_role = session['role'] if session and session['role'] != 'Admin' else None
+        return render_template('AdminLogin.html', blocking_role=blocking_role)
 
     username = request.form.get('username')
     pword = request.form.get('pword')
+
+    session = current_session()
+    if session is not None:
+        if session['role'] != 'Admin':
+            flash(f"You're already logged in as a {session['role']}. Log out first to sign in as a different role.", 'error')
+            return redirect(url_for('adminLogin'))
+        current = Admin.query.filter_by(idno=session['idno']).first()
+        if current is not None and current.username == username:
+            return redirect(url_for('admin_dashboard'))
+
+    if not username or not pword:
+        flash('Please enter both a username and a password.', 'error')
+        return redirect(url_for('adminLogin'))
+
     data = Admin.query.filter_by(username=username).first()
 
     if data is not None and bcrypt.check_password_hash(data.pword, pword):
@@ -442,7 +592,8 @@ def createduty():
         return redirect(url_for('createduty'))
 
     places = Place.query.order_by(Place.id).all()
-    return render_template("createduty.html", places=places)
+    security = Security.query.order_by(Security.idno).all()
+    return render_template("createduty.html", places=places, security=security)
 
 
 @app.route("/securitydashboard", methods=['GET', 'POST'])
@@ -518,6 +669,16 @@ def overtime_request():
         flash('Please provide a valid place number.', 'error')
         return redirect(url_for('securitydashboard'))
 
+    on_leave = Absence.query.filter(
+        Absence.idno == g.user['idno'],
+        Absence.status.in_(['Pending', 'Approved']),
+        Absence.sdate <= ddate,
+        Absence.edate >= ddate,
+    ).first()
+    if on_leave is not None:
+        flash('You cannot request overtime for a date covered by one of your own pending or approved leave requests.', 'error')
+        return redirect(url_for('securitydashboard'))
+
     db.session.add(OvertimeRequest(
         idno=g.user['idno'], ddate=ddate, shift=shift, placeid=placeid,
         status='Pending', timestamp=datetime.utcnow(),
@@ -549,6 +710,56 @@ def decline_leave(absence_id):
     absence.status = 'Declined'
     db.session.commit()
     flash('Leave request declined.', 'success')
+    return redirect(url_for('managerdash_view'))
+
+
+@app.route("/leave/<int:absence_id>/cancel", methods=['POST'])
+@token_required(role='Security')
+def cancel_leave(absence_id):
+    absence = Absence.query.get_or_404(absence_id)
+    if absence.idno != g.user['idno']:
+        abort(403)
+
+    if absence.status == 'Pending':
+        absence.status = 'Cancelled'
+        db.session.commit()
+        flash('Leave request cancelled.', 'success')
+    elif absence.status == 'Approved' and not absence.cancellation_requested:
+        absence.cancellation_requested = True
+        db.session.commit()
+        flash('Cancellation requested. Awaiting manager review.', 'success')
+    else:
+        flash('This request cannot be cancelled right now.', 'error')
+
+    return redirect(url_for('securitydashboard'))
+
+
+@app.route("/manager/leave/<int:absence_id>/cancel/approve", methods=['POST'])
+@token_required(role='Manager')
+def approve_leave_cancellation(absence_id):
+    absence = Absence.query.get_or_404(absence_id)
+    if absence.status != 'Approved' or not absence.cancellation_requested:
+        flash('This request does not have a pending cancellation.', 'error')
+        return redirect(url_for('managerdash_view'))
+
+    absence.status = 'Cancelled'
+    absence.cancellation_requested = False
+    db.session.commit()
+    flash('Leave cancellation approved.', 'success')
+    return redirect(url_for('managerdash_view'))
+
+
+@app.route("/manager/leave/<int:absence_id>/cancel/decline", methods=['POST'])
+@token_required(role='Manager')
+def decline_leave_cancellation(absence_id):
+    absence = Absence.query.get_or_404(absence_id)
+    if absence.status != 'Approved' or not absence.cancellation_requested:
+        flash('This request does not have a pending cancellation.', 'error')
+        return redirect(url_for('managerdash_view'))
+
+    absence.cancellation_requested = False
+    db.session.commit()
+    flash('Leave cancellation declined; the approved leave stands.', 'success')
     return redirect(url_for('managerdash_view'))
 
 
@@ -588,6 +799,22 @@ def decline_overtime(req_id):
     db.session.commit()
     flash('Overtime request declined.', 'success')
     return redirect(url_for('managerdash_view'))
+
+
+@app.route("/overtime/<int:req_id>/cancel", methods=['POST'])
+@token_required(role='Security')
+def cancel_overtime(req_id):
+    req = OvertimeRequest.query.get_or_404(req_id)
+    if req.idno != g.user['idno']:
+        abort(403)
+    if req.status != 'Pending':
+        flash('This request can no longer be cancelled.', 'error')
+        return redirect(url_for('securitydashboard'))
+
+    req.status = 'Cancelled'
+    db.session.commit()
+    flash('Overtime request cancelled.', 'success')
+    return redirect(url_for('securitydashboard'))
 
 
 @app.route("/manager/bonus", methods=['POST'])
@@ -711,6 +938,10 @@ def generate_roster_route():
 
     end = start + timedelta(days=6)
     batch = generate_roster(start, end)
+
+    if Duty.query.filter_by(batch_id=batch.id).count() == 0:
+        flash('No security personnel are registered, so nothing could be assigned -- every slot is marked Uncovered.', 'error')
+
     return redirect(url_for('roster_review', batch_id=batch.id))
 
 
@@ -727,9 +958,14 @@ def roster_review(batch_id):
     slot_map = {(d.ddate, d.shift, d.placeid): d for d in duties}
     uncovered_set = {(u.ddate, u.shift, u.placeid) for u in uncovered}
 
+    day_uncovered_counts = {}
+    for u in uncovered:
+        day_uncovered_counts[u.ddate] = day_uncovered_counts.get(u.ddate, 0) + 1
+
     return render_template(
         'roster_review.html', batch=batch, days=days, places=places,
         persons=persons, slot_map=slot_map, uncovered_set=uncovered_set,
+        day_uncovered_counts=day_uncovered_counts,
     )
 
 
@@ -788,7 +1024,14 @@ def registration():
         name = request.form.get('name')
         username = request.form.get('username')
         domain = request.form.get('domain')
-        idno = request.form.get('idno')
+        # seed.py generates idno as a clean f'S{i:04d}' string with no
+        # whitespace and consistent case; this form has no equivalent
+        # guarantee (only a client-side minlength/maxlength=5, which counts
+        # characters, not meaningful ones -- a trailing space still passes).
+        # Normalize here so both creation paths produce matching identity
+        # data instead of two humans' independently-typed strings silently
+        # diverging by a byte a duty/dashboard lookup would never forgive.
+        idno = (request.form.get('idno') or '').strip().upper()
         password = request.form.get('pword')
         cpword = request.form.get('cpword')
 
