@@ -9,10 +9,10 @@
         integrity="sha384-TX8t27EcRE3e/ihU7zmQxVncDAy5uIKz4rEkgIXeMed4M0jlfIDPvg6uqKI2xXr2" crossorigin="anonymous">
     <link rel="preconnect" href="https://fonts.gstatic.com">
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../static/css/base.css">
-    <link rel="stylesheet" href="../static/css/dash.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}?v={{ STATIC_VERSION }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dash.css') }}?v={{ STATIC_VERSION }}">
     <title>Dashboard</title>
-    <link rel="icon" type="image/x-icon" href="../static/images/favicon.svg">
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='images/favicon.svg') }}">
 </head>
 
 <body>
@@ -41,6 +41,9 @@
                             <a class="nav-link active" href="/index">Home <span class="sr-only">(current)</span></a>
                         </li>
                         <li class="nav-item ">
+                            <a class="nav-link active" href="/managerdash">Dashboard <span class="sr-only">(current)</span></a>
+                        </li>
+                        <li class="nav-item ">
                             <a class="nav-link active" href="/logout">Logout<span class="sr-only">(current)</span></a>
                         </li>
                     </ul>
@@ -48,64 +51,62 @@
             </div>
         </nav>
     </div>
-    <section>
-        <div class="container px-4">
-            <div class="row no-gutters px-2">
-                <div class="col">
-                    <form action="" method="post">
-                        <div class="form-row">
-                            <div class="col-lg-4 col-4">
-                                <label style="font-size:larger; text-align: center; padding-top: 10px;">Create
-                                    Routine</label>
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="col-lg-4 col-4">
-                                <label>Enter Identity no</label>
-                                <input type="text" placeholder="Identity Number" minlength="5" maxlength="5"
-                                    name="didno" size="5" value="" class="form-control" my-3 p-3 required />
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="col-lg-4 col-4">
-                                <label>Select Place</label>
-                                <select name="placeid" class="form-control" required>
-                                    {% for place in places %}
-                                    <option value="{{ place.id }}">{{ place.name }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="col-lg-4 col-4">
-                                <label>Enter Duty Date</label>
-                                <input type="date" placeholder="Duty Date" name="ddate" value="" class="form-control"
-                                    my-3 p-3 required />
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="col-lg-4 col-4">
-                                <label>Select Shift</label>
-                                <select name="shift" class="form-control" required>
-                                    {% for shift in SHIFTS %}
-                                    <option value="{{ shift }}">{{ shift }} ({{ SHIFT_TIMES[shift][0] }}-{{ SHIFT_TIMES[shift][1] }})</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="col-lg-4 col-4">
-                                <button type="submit" class="btn btn-primary" name="button"
-                                    onclick="msg()">Submit</button>
-                            </div>
-                        </div>
-                    </form>
+    <div class="card" style="margin-top: 32px;">
+        <h3>Create Routine</h3>
+        <form action="" method="post">
+            <div class="form-row">
+                <div class="col-lg-4 col-4">
+                    <label>Select Security Person</label>
+                    <select name="didno" class="form-control" required>
+                        {% for secu in security %}
+                        <option value="{{ secu.idno }}">{{ secu.name }} ({{ secu.idno }})</option>
+                        {% endfor %}
+                    </select>
                 </div>
             </div>
-        </div>
-    </section>
+            <div class="form-row">
+                <div class="col-lg-4 col-4">
+                    <label>Select Place</label>
+                    <select name="placeid" class="form-control" required>
+                        {% for place in places %}
+                        <option value="{{ place.id }}">{{ place.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="col-lg-4 col-4">
+                    <label>Enter Duty Date</label>
+                    <input type="date" placeholder="Duty Date" name="ddate" value="" class="form-control"
+                        my-3 p-3 required />
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="col-lg-4 col-4">
+                    <label>Select Shift</label>
+                    <select name="shift" class="form-control" required>
+                        {% for shift in SHIFTS %}
+                        <option value="{{ shift }}">{{ shift }} ({{ SHIFT_TIMES[shift][0] }}-{{ SHIFT_TIMES[shift][1] }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="col-lg-4 col-4">
+                    <button type="submit" class="btn btn-primary" name="button"
+                        onclick="msg()">Submit</button>
+                </div>
+            </div>
+        </form>
+    </div>
 
 
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"
+        integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-ho+j7jyWK8fNQe+A12Hb8AhRq26LrZ/JpcUGGOn+Y7RsweNrtN/tE3MoK7ZeZDyx"
+        crossorigin="anonymous"></script>
     <script>
         function msg() {
             alert("Sucessfully Created Routine");

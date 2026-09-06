@@ -9,10 +9,10 @@
     integrity="sha384-TX8t27EcRE3e/ihU7zmQxVncDAy5uIKz4rEkgIXeMed4M0jlfIDPvg6uqKI2xXr2" crossorigin="anonymous">
   <link rel="preconnect" href="https://fonts.gstatic.com">
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../static/css/base.css">
-  <link rel="stylesheet" href="../static/css/dash.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}?v={{ STATIC_VERSION }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dash.css') }}?v={{ STATIC_VERSION }}">
   <title>Dashboard</title>
-  <link rel="icon" type="image/x-icon" href="../static/images/favicon.svg">
+  <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='images/favicon.svg') }}">
 </head>
 
 <body>
@@ -38,6 +38,9 @@
           <ul class="navbar-nav ml-auto">
             <li class="nav-item ">
               <a class="nav-link active" href="/index">Home <span class="sr-only">(current)</span></a>
+            </li>
+            <li class="nav-item ">
+              <a class="nav-link active" href="/managerdash">Dashboard <span class="sr-only">(current)</span></a>
             </li>
             <li class="nav-item ">
               <a class="nav-link active" href="/logout">Logout<span class="sr-only">(current)</span></a>
@@ -83,9 +86,33 @@
 
     <div class="tab-panel hidden" id="tab-duties">
       <div>
-        <a href="/createduty" class="btn" style="display:inline-block; width:auto; padding:0 20px; margin-bottom:16px;">+ Create Duty</a>
+        <a href="/createduty" class="btn" style="display: inline-flex; align-items: center; justify-content: center; width: auto; padding: 0 20px; margin-bottom: 16px;">+ Create Duty</a>
       </div>
       <div class="card">
+        <form method="get" action="{{ url_for('managerdash_view') }}" style="margin-bottom: 16px;">
+          <label style="display: block; margin-bottom: 4px;">Jump to week</label>
+          <input type="week" name="week" class="form-control" style="display: inline-block; width: auto;"
+            onchange="this.form.submit()">
+        </form>
+
+        <div class="d-flex justify-content-center" style="gap: 8px; margin-bottom: 16px; flex-wrap: wrap;">
+          {% for wd in week_days %}
+          <a href="{{ url_for('managerdash_view', duty_date=wd.isoformat()) }}"
+            class="chip chip-day{{ ' chip-day-selected' if wd == duty_date else '' }}">
+            {{ wd.strftime('%a') }} {{ wd.day }}
+          </a>
+          {% endfor %}
+        </div>
+
+        <div class="d-flex justify-content-center align-items-center" style="gap: 16px; margin-bottom: 12px;">
+          <a href="{{ url_for('managerdash_view', duty_date=prev_duty_date) }}" class="btn" style="display: inline-flex; align-items: center; justify-content: center; width: auto; padding: 0 16px;" aria-label="Previous day">
+            <i class="fa-solid fa-chevron-left"></i>
+          </a>
+          <span class="mono" style="font-size: 1.1rem; color: var(--ink);">{{ duty_date }}</span>
+          <a href="{{ url_for('managerdash_view', duty_date=next_duty_date) }}" class="btn" style="display: inline-flex; align-items: center; justify-content: center; width: auto; padding: 0 16px;" aria-label="Next day">
+            <i class="fa-solid fa-chevron-right"></i>
+          </a>
+        </div>
         <table class="table table-hover table-bordered">
           <caption>Duty Table</caption>
           <thead>
@@ -217,6 +244,39 @@
 
       <div class="card">
         <table class="table table-hover table-bordered">
+          <caption>Leave Cancellation Requests</caption>
+          <thead>
+            <tr>
+              <th class="table-title" scope="col">Identity Number</th>
+              <th class="table-title" scope="col">Start Date</th>
+              <th class="table-title" scope="col">End Date</th>
+              <th class="table-title" scope="col">Reason</th>
+              <th class="table-title" scope="col">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for abs in pending_cancellations %}
+            <tr>
+              <td class="mono">{{ abs.idno }}</td>
+              <td class="mono">{{ abs.sdate }}</td>
+              <td class="mono">{{ abs.edate }}</td>
+              <td>{{ abs.reason }}</td>
+              <td>
+                <form action="{{ url_for('approve_leave_cancellation', absence_id=abs.id) }}" method="post" style="display:inline">
+                  <button type="submit" class="btn btn-sm btn-success">Approve</button>
+                </form>
+                <form action="{{ url_for('decline_leave_cancellation', absence_id=abs.id) }}" method="post" style="display:inline">
+                  <button type="submit" class="btn btn-sm btn-danger">Decline</button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <table class="table table-hover table-bordered">
           <caption>Overtime requested by Security personal</caption>
           <thead>
             <tr>
@@ -312,6 +372,12 @@
     </div>
   </div>
 
+  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"
+    integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj"
+    crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/js/bootstrap.bundle.min.js"
+    integrity="sha384-ho+j7jyWK8fNQe+A12Hb8AhRq26LrZ/JpcUGGOn+Y7RsweNrtN/tE3MoK7ZeZDyx"
+    crossorigin="anonymous"></script>
   <script>
     function msg() {
       alert("Sucessfully Created Routine");

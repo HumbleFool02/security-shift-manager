@@ -9,11 +9,11 @@
     integrity="sha384-TX8t27EcRE3e/ihU7zmQxVncDAy5uIKz4rEkgIXeMed4M0jlfIDPvg6uqKI2xXr2" crossorigin="anonymous">
   <link rel="preconnect" href="https://fonts.gstatic.com">
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../static/css/base.css">
-  <link rel="stylesheet" href="../static/css/style.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}?v={{ STATIC_VERSION }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v={{ STATIC_VERSION }}">
 
   <title>Hawk Eye</title>
-  <link rel="icon" type="image/x-icon" href="../static/images/favicon.svg">
+  <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='images/favicon.svg') }}">
 </head>
 
 <body>
@@ -36,6 +36,11 @@
               <li class="nav-item ">
                 <a class="nav-link active" href="/registration">Register <span class="sr-only">(current)</span></a>
               </li>
+              {% if viewer %}
+              <li class="nav-item ">
+                <a class="nav-link active" href="/logout">Logout <span class="sr-only">(current)</span></a>
+              </li>
+              {% endif %}
 
             </ul>
           </div>
@@ -49,6 +54,26 @@
     </div>
     <!-- -------------------------------------------header section ends here-------------------------------------------------------------- -->
 
+    {% if viewer %}
+    <!-- ---------------------------------------------------welcome back begin----------------------------------------------------------- -->
+    <section class="cards">
+      <div class="container">
+        <div class="row">
+          <div class="col-12">
+            <div class="card">
+              <div class="card-header"><a href="#"><i class="fa-solid fa-circle-user"></i></a></div>
+              <div class="card-body">
+                <h2>Welcome back, {{ viewer_name }}</h2>
+                <p>You're already logged in as {{ viewer.role }}.</p>
+              </div>
+              <div class="card-footer"><a href="{{ dashboard_url }}">Go to your dashboard</a></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <!-- ---------------------------------------------------welcome back end----------------------------------------------------------- -->
+    {% else %}
     <!-- ---------------------------------------------------two cards begin----------------------------------------------------------- -->
     <section class="cards">
       <div class="container">
@@ -75,6 +100,7 @@
           </div>
         </div>
     </section>
+    {% endif %}
   </div>
   <!-- ---------------------------------------------------two cards end----------------------------------------------------------- -->
   <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"
