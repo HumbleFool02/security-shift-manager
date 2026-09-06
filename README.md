@@ -36,7 +36,7 @@ Originally built as a coursework project; rebuilt since as a portfolio piece.
 
 **Landing page**
 
-![Landing page](docs/screenshots/landing-page.jpg)
+![Landing page](docs/screenshots/landing-page.JPG)
 
 **Manager dashboard** — tabs and the week/day-chip navigation in action
 
@@ -44,19 +44,19 @@ Originally built as a coursework project; rebuilt since as a portfolio piece.
 
 **Admin dashboard** — payroll settings form
 
-![Admin dashboard](docs/screenshots/admin-dashboard.jpg)
+![Admin dashboard](docs/screenshots/admin-dashboard.JPG)
 
 **Registration page**
 
-![Registration page](docs/screenshots/registration.jpg)
+![Registration page](docs/screenshots/registration.JPG)
 
 **Roster review** — the generated-roster accordion, with reassignment and publish controls
 
-![Roster review](docs/screenshots/roster-review.jpg)
+![Roster review](docs/screenshots/roster-review.JPG)
 
 **Payroll report** — generated payslips for a given month
 
-![Payroll report](docs/screenshots/payroll-report.jpg)
+![Payroll report](docs/screenshots/payroll-report.JPG)
 
 **Security dashboard** — upcoming duties, leave/overtime requests, and payslip history
 
