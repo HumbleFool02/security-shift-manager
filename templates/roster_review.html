@@ -9,10 +9,10 @@
     integrity="sha384-TX8t27EcRE3e/ihU7zmQxVncDAy5uIKz4rEkgIXeMed4M0jlfIDPvg6uqKI2xXr2" crossorigin="anonymous">
   <link rel="preconnect" href="https://fonts.gstatic.com">
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../static/css/base.css?v={{ STATIC_VERSION }}">
-  <link rel="stylesheet" href="../static/css/dash.css?v={{ STATIC_VERSION }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}?v={{ STATIC_VERSION }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dash.css') }}?v={{ STATIC_VERSION }}">
   <title>Roster Review</title>
-  <link rel="icon" type="image/x-icon" href="../static/images/favicon.svg">
+  <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='images/favicon.svg') }}">
   <style>
     /* Direct, page-scoped guard against the nav overlap reported on this
        page specifically. Investigated thoroughly: no sticky positioning,
