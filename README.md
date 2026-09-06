@@ -32,8 +32,6 @@ Originally built as a coursework project; rebuilt since as a portfolio piece.
 
 ## Media
 
-> Screenshots/GIF to be added by Piyush — see [`docs/screenshots/`](docs/screenshots/).
-
 **Landing page**
 
 ![Landing page](docs/screenshots/landing-page.JPG)
