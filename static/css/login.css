@@ -1,16 +1,29 @@
-.row {
-  background: white;
-  border-radius: 30px;
-  padding: 12px 0;
-}
-
-.row img {
-  height: 400px;
-  width: 300px;
-  border-top-left-radius: 30px;
-  border-bottom-left-radius: 30px;
-}
-
 h1 {
   text-align: center;
+}
+
+.password-field {
+  position: relative;
+}
+
+.password-field input {
+  padding-right: 40px;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  width: auto;
+  height: auto;
+  padding: 4px;
+  cursor: pointer;
+  color: var(--slate);
+}
+
+.password-toggle:hover {
+  color: var(--ink);
 }

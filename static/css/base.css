@@ -11,6 +11,12 @@
   --font-display: 'Space Grotesk', sans-serif;
   --font-body: 'Inter', sans-serif;
   --font-mono: 'IBM Plex Mono', monospace;
+
+  /* No browser is available in this environment to measure the real
+     rendered navbar height, so this is a deliberately conservative
+     estimate (was 64px) rather than a measurement -- see the commit
+     message / handoff notes for how to correct it from devtools. */
+  --nav-height: 72px;
 }
 
 * {
@@ -23,6 +29,12 @@
 body {
   background: var(--paper);
   color: var(--slate);
+  /* Every page's nav is Bootstrap .fixed-top, which is removed from normal
+     flow and pinned to the viewport regardless of where .header sits in the
+     document. Reserving --nav-height here is what actually keeps it from
+     overlapping the content that follows -- a wrapper div's own height does
+     NOT reserve space for a fixed-position child. */
+  padding-top: var(--nav-height);
 }
 
 h1, h2, h3, h4, h5, h6,
@@ -35,17 +47,22 @@ h1, h2, h3, h4, h5, h6,
   font-family: var(--font-mono);
 }
 
-/* Header / nav use --ink everywhere, overriding Bootstrap's .bg-light utility */
+/* Header / nav use --ink everywhere, overriding Bootstrap's .bg-light utility.
+   .header itself carries no height here: on every page except the landing
+   page its only content is the fixed nav, which contributes nothing to its
+   box, so an explicit height here just produced an empty ink-colored bar.
+   index.html's hero still needs .header to have a real height (its gradient
+   section sizes itself as a percentage of it) -- that override lives in
+   style.css, loaded after this. */
 .header {
   width: 100%;
-  height: 10vh;
-  background-size: 100% 100%;
   position: relative;
   background-color: var(--ink) !important;
 }
 
 .navbar {
   background-color: var(--ink) !important;
+  min-height: var(--nav-height);
 }
 
 .navbar-brand,
@@ -60,12 +77,16 @@ h1, h2, h3, h4, h5, h6,
 .btn {
   border: 1px solid var(--ink);
   outline: none;
-  height: 40px;
+  min-height: 40px;
+  height: auto;
   width: 100%;
+  padding: 8px 14px;
   background-color: #fff;
   color: var(--ink);
   border-radius: 4px;
   font-weight: bold;
+  white-space: normal;
+  line-height: 1.3;
 }
 
 .btn:hover {
@@ -76,9 +97,28 @@ h1, h2, h3, h4, h5, h6,
 
 .form-row {
   text-align: left;
-  padding-bottom: 20px;
+  padding-bottom: 12px;
   justify-content: center;
   justify-items: center;
+}
+
+/* Every multi-row form ends its last .form-row (usually the submit button)
+   with the same trailing gap as every other row, which is what read as
+   "excess whitespace below content" on the leave/overtime request boxes --
+   .card-wrapped tables don't use .form-row so they never had this gap. */
+.form-row:last-child {
+  padding-bottom: 0;
+}
+
+/* Approve/decline reuse the design system's status colors on hover instead
+   of introducing new ones. */
+.btn-success:hover {
+  background-color: var(--status-approved) !important;
+  border-color: var(--status-approved) !important;
+}
+.btn-danger:hover {
+  background-color: var(--status-declined) !important;
+  border-color: var(--status-declined) !important;
 }
 
 /* Shift chips: same visual treatment everywhere a shift appears */
