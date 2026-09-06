@@ -9,10 +9,24 @@
     integrity="sha384-TX8t27EcRE3e/ihU7zmQxVncDAy5uIKz4rEkgIXeMed4M0jlfIDPvg6uqKI2xXr2" crossorigin="anonymous">
   <link rel="preconnect" href="https://fonts.gstatic.com">
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../static/css/base.css">
-  <link rel="stylesheet" href="../static/css/dash.css">
+  <link rel="stylesheet" href="../static/css/base.css?v={{ STATIC_VERSION }}">
+  <link rel="stylesheet" href="../static/css/dash.css?v={{ STATIC_VERSION }}">
   <title>Payroll Report</title>
   <link rel="icon" type="image/x-icon" href="../static/images/favicon.svg">
+  <style>
+    /* Direct, page-scoped guard against the nav overlap reported on this
+       page specifically -- see roster_review.html for the full
+       investigation notes. No code-level cause was found; base.css's
+       body padding-top is unscoped and applies identically to every
+       working page. This guarantees the fix here regardless.
+
+       Re-checked for the reported nav-color inconsistency: this block
+       contained only that one padding-top rule, which cannot cascade into
+       background-color -- see roster_review.html for the full notes.
+       Adding the same redundant, guaranteed override as there. */
+    body { padding-top: var(--nav-height, 72px) !important; }
+    .header, .navbar { background-color: var(--ink) !important; }
+  </style>
 </head>
 
 <body>
@@ -37,7 +51,10 @@
         <div class="collapse navbar-collapse" id="navbarSupportedContent">
           <ul class="navbar-nav ml-auto">
             <li class="nav-item ">
-              <a class="nav-link active" href="/managerdash">Manager Dashboard <span class="sr-only">(current)</span></a>
+              <a class="nav-link active" href="/index">Home <span class="sr-only">(current)</span></a>
+            </li>
+            <li class="nav-item ">
+              <a class="nav-link active" href="/managerdash">Dashboard <span class="sr-only">(current)</span></a>
             </li>
             <li class="nav-item ">
               <a class="nav-link active" href="/logout">Logout<span class="sr-only">(current)</span></a>
@@ -53,7 +70,8 @@
   </div>
 
   <div class="card">
-    <table class="table table-hover table-bordered">
+    <div style="overflow-x: auto;">
+    <table class="table table-hover table-bordered table-zebra">
       <caption>Payslips</caption>
       <thead>
         <tr>
@@ -88,7 +106,14 @@
         {% endfor %}
       </tbody>
     </table>
+    </div>
   </div>
+  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"
+    integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj"
+    crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/js/bootstrap.bundle.min.js"
+    integrity="sha384-ho+j7jyWK8fNQe+A12Hb8AhRq26LrZ/JpcUGGOn+Y7RsweNrtN/tE3MoK7ZeZDyx"
+    crossorigin="anonymous"></script>
 </body>
 
 </html>
